@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+
+<style>
+    body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #111;
+  color: white;
+}
+.app {
+  padding: 16px;
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Title */
+h1 {
+  margin-bottom: 5px;
+}
+
+#date {
+  font-size: 14px;
+  color: gray;
+  margin-bottom: 20px;
+}
+
+/* Add Task */
+.add-task {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.add-task input {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+}
+
+.add-task button {
+  padding: 12px 16px;
+  border: none;
+  background: #4caf50;
+  color: white;
+  border-radius: 8px;
+}
+
+/* Task List */
+.task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e1e1e;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+}
+
+.task input {
+  transform: scale(1.3);
+}
+
+/* Progress */
+.progress {
+  text-align: center;
+  font-size: 18px;
+  margin: 20px 0;
+}
+
+/* Buttons */
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.actions button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #333;
+  color: white;
+}
+
+.hidden {
+  display: none;
+}
+
+#historyScreen {
+  padding: 16px;
+}
+
+.history-item {
+  background: #1e1e1e;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.history-tasks {
+  font-size: 14px;
+  color: #ccc;
+}
+</style>
+
+<body>
+
+<div class="app">
+
+  <h1>My Habits</h1>
+  <div id="date"></div>
+
+  <!-- Add Task -->
+  <div class="add-task">
+    <input type="text" id="taskInput" placeholder="Add new habit">
+    <button onclick="addTask()">+</button>
+  </div>
+
+  <!-- Task List -->
+  <div id="taskList"></div>
+
+  <!-- Progress -->
+  <div class="progress">
+    <span id="progressText">0%</span>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button onclick="showHistory()">History</button>
+    <button onclick="resetAll()">Reset</button>
+  </div>
+
+</div>
+
+
+  <div id="historyScreen" class="hidden">
+
+  <h2>History</h2>
+
+  <div id="historyList"></div>
+
+  <button onclick="goBack()">Back</button>
+
+</div>
+
+<script>
+    // ===== INIT =====
+const taskInput = document.getElementById("taskInput");
+const taskList = document.getElementById("taskList");
+const progressText = document.getElementById("progressText");
+const dateEl = document.getElementById("date");
+
+let today = new Date().toLocaleDateString('en-CA');
+
+// Show date
+dateEl.innerText = today;
+
+// Load data
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let logs = JSON.parse(localStorage.getItem("logs")) || {};
+
+// Ensure today exists
+if (!logs[today]) {
+  logs[today] = {};
+}
+
+// ===== ADD TASK =====
+function addTask() {
+  const name = taskInput.value.trim();
+  if (!name) return;
+
+  const task = {
+    id: Date.now().toString(),
+    name: name
+  };
+
+  tasks.push(task);
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+
+  taskInput.value = "";
+  render();
+}
+
+// ===== TOGGLE TASK =====
+function toggleTask(id) {
+  logs[today][id] = !logs[today][id];
+  localStorage.setItem("logs", JSON.stringify(logs));
+  render();
+}
+
+// ===== RENDER =====
+function render() {
+  taskList.innerHTML = "";
+
+  let completed = 0;
+
+  tasks.forEach(task => {
+    const checked = logs[today][task.id] || false;
+    if (checked) completed++;
+
+    const div = document.createElement("div");
+    div.className = "task";
+
+    div.innerHTML = `
+      <span>${task.name}</span>
+      <input type="checkbox" ${checked ? "checked" : ""} 
+        onchange="toggleTask('${task.id}')">
+    `;
+
+    taskList.appendChild(div);
+  });
+
+  // Progress
+  const percent = tasks.length === 0 ? 0 : Math.round((completed / tasks.length) * 100);
+  progressText.innerText = percent + "%";
+
+  // Save logs (important)
+  localStorage.setItem("logs", JSON.stringify(logs));
+}
+
+// ===== RESET ALL =====
+function resetAll() {
+  if (!confirm("Delete everything?")) return;
+
+  localStorage.clear();
+  tasks = [];
+  logs = {};
+  render();
+}
+
+function renderHistory() {
+  const historyList = document.getElementById("historyList");
+  historyList.innerHTML = "";
+
+  const dates = Object.keys(logs).sort().reverse();
+
+  dates.forEach(date => {
+    const dayLog = logs[date];
+
+    const total = tasks.length;
+    const completed = Object.values(dayLog).filter(v => v).length;
+    const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+    const div = document.createElement("div");
+    div.className = "history-item";
+
+    div.innerHTML = `
+      <div class="history-header">
+        <span>${date}</span>
+        <span>${percent}%</span>
+      </div>
+      <div class="history-tasks">
+        ${tasks.map(task => `
+          <div>
+            ${dayLog[task.id] ? "✅" : "❌"} ${task.name}
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    historyList.appendChild(div);
+  });
+}
+
+// Initial render
+render();
+
+function showHistory() {
+  document.querySelector(".app").classList.add("hidden");
+  document.getElementById("historyScreen").classList.remove("hidden");
+  renderHistory();
+}
+
+function goBack() {
+  document.getElementById("historyScreen").classList.add("hidden");
+  document.querySelector(".app").classList.remove("hidden");
+}
+
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js")
+    .then(() => console.log("Service Worker Registered"))
+    .catch(err => console.log("SW error:", err));
+}
+
+setInterval(() => {
+  const newToday = new Date().toISOString().split("T")[0];
+
+  if (newToday !== today) {
+    today = newToday;
+
+    // create new day log if not exists
+    if (!logs[today]) {
+      logs[today] = {};
+    }
+
+    render();
+  }
+}, 60000); // check every 1 min
+</script>
+</body>
+</html>
