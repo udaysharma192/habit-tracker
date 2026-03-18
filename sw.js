@@ -1,8 +1,10 @@
-const CACHE_NAME = "habit-tracker-v3";
+const CACHE_NAME = "habit-tracker-v4";
 
 const urlsToCache = [
-  "/",
-  "/index.html"
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icon.png"
 ];
 
 // Install
